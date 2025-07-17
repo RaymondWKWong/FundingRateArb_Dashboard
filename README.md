@@ -51,10 +51,6 @@ Run the dashboard locally:
 streamlit run funding_rate_dashboard.py
 ```
 
-## Deployment
-
-This dashboard is optimized for deployment on Streamlit Community Cloud.
-
 ## How It Works
 
 The dashboard fetches real-time funding rates from multiple exchanges and calculates arbitrage opportunities by:
@@ -63,13 +59,6 @@ The dashboard fetches real-time funding rates from multiple exchanges and calcul
 2. **Opportunity Detection**: Finding the highest and lowest rates for each cryptocurrency
 3. **Profit Calculation**: Computing potential profit from rate differences
 4. **Visual Display**: Presenting opportunities with color-coded Long/Short positions
-
-## API Rate Limits
-
-The dashboard respects exchange API rate limits with:
-- 5-minute data caching
-- Error handling for failed requests
-- Graceful degradation when exchanges are unavailable
 
 ## License
 
