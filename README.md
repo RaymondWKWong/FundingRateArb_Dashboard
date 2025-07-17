@@ -1,6 +1,6 @@
 # FundingRateArb Dashboard
 
-A professional real-time dashboard for monitoring funding rate arbitrage opportunities across 9 major cryptocurrency exchanges.
+Real-time dashboard for monitoring funding rate arbitrage opportunities across 9 major cryptocurrency exchanges.
 
 ## Features
 
