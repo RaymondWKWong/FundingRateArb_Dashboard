@@ -623,7 +623,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# EXCHANGE API FUNCTIONS (Optimized for dashboard)
+# EXCHANGE API FUNCTIONS
 # =============================================================================
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -823,7 +823,6 @@ def fetch_kucoin_funding(symbol, days=7):
 
 @st.cache_data(ttl=300)
 def fetch_mexc_funding(symbol):
-    """MEXC API - Fixed with working endpoint"""
     try:
         url = f"https://contract.mexc.com/api/v1/contract/funding_rate/{symbol}_USDT"
         response = requests.get(url, timeout=10)
@@ -865,7 +864,6 @@ def fetch_mexc_funding(symbol):
 
 @st.cache_data(ttl=300)
 def fetch_bitget_funding(symbol):
-    """Bitget API - Fixed with correct symbol format"""
     try:
         url = "https://api.bitget.com/api/v2/mix/market/funding-rate"
         params = {
@@ -918,7 +916,6 @@ def fetch_bitget_funding(symbol):
 
 @st.cache_data(ttl=300)
 def fetch_bingx_funding(symbol):
-    """BingX API - Fixed data parsing for list responses"""
     try:
         url = f"https://open-api.bingx.com/openApi/swap/v2/quote/fundingRate"
         params = {'symbol': f"{symbol}-USDT"}
@@ -1003,7 +1000,6 @@ def fetch_whitebit_funding(symbol):
 
 @st.cache_data(ttl=300)
 def fetch_current_rates_other_exchanges(symbol):
-    """Fetch current rates from additional exchanges"""
     exchanges_data = []
     
     additional_exchanges = [
@@ -1066,8 +1062,8 @@ def collect_funding_data(symbol, days=7):
     else:
         return pd.DataFrame()
 
-def analyze_arbitrage_opportunities(data):
-    """Analyze arbitrage opportunities from funding rate data"""
+def analyse_arbitrage_opportunities(data):
+    """Analyse arbitrage opportunities from funding rate data"""
     if data.empty:
         return pd.DataFrame(), {}
     
@@ -1109,14 +1105,13 @@ def analyze_arbitrage_opportunities(data):
     return pd.DataFrame(arbitrage_opportunities), stats
 
 def create_funding_rate_chart(data):
-    """Create historical funding rate chart with dark theme"""
+    """Create historical funding rate chart"""
     if data.empty:
         return None
     
     fig = go.Figure()
     
     exchanges = data['exchange'].unique()
-    # Professional color palette for dark theme
     colors = ['#00d4ff', '#ff6b6b', '#4ecdc4', '#45b7d1', '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43']
     
     for i, exchange in enumerate(exchanges):
@@ -1677,8 +1672,8 @@ def main():
             st.error(f"No data available for {symbol}. Please try another symbol.")
             return
         
-        # Analyze opportunities
-        arb_df, stats = analyze_arbitrage_opportunities(data)
+        # Analyse opportunities
+        arb_df, stats = analyse_arbitrage_opportunities(data)
         
         # Title
         st.markdown(f"<h2 style='color: #ffffff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.7); margin-bottom: 1rem;'>{symbol} Funding Rate Analysis</h2>", unsafe_allow_html=True)
