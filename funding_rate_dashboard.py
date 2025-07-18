@@ -1175,6 +1175,243 @@ def create_funding_rate_chart(data):
     
     return fig
 
+def create_exchange_list(data, capital, symbol):
+    """Create exchange list similar to the reference image"""
+    if data.empty:
+        return None
+    
+    # Get latest rates for all exchanges
+    latest_data = data.groupby('exchange').last().reset_index()
+    
+    # Sort by funding rate (descending for best opportunities)
+    latest_data = latest_data.sort_values('funding_rate', ascending=False)
+    
+    # Create table header
+    list_html = '''
+    <div class="exchange-table">
+        <div class="table-header">
+            <div class="header-cell">Ticker Markets</div>
+            <div class="header-cell">Funding Rates</div>
+            <div class="header-cell">Countdown</div>
+            <div class="header-cell">% Profit Interval</div>
+            <div class="header-cell">24 hours</div>
+            <div class="header-cell">Life time</div>
+        </div>
+    '''
+    
+    for idx, row in latest_data.iterrows():
+        exchange = row['exchange']
+        funding_rate = row['funding_rate']
+        
+        # Calculate profit potential (funding rate * 3 payments per day * capital)
+        daily_profit_pct = funding_rate * 3 * 100
+        
+        # Determine position type based on rate
+        if funding_rate > 0:
+            position_type = "SHORT"
+            position_color = "short-position"
+        else:
+            position_type = "LONG"  
+            position_color = "long-position"
+        
+        # Color coding for funding rate
+        rate_color = 'rate-positive' if funding_rate > 0 else 'rate-negative'
+        
+        # Profit color
+        profit_color = 'profit-positive' if daily_profit_pct > 0 else 'profit-negative'
+        
+        # Calculate countdown to next funding (8 hours cycle)
+        import datetime
+        now = datetime.datetime.now()
+        next_funding_hours = 8 - (now.hour % 8)
+        next_funding_minutes = 60 - now.minute
+        
+        if next_funding_minutes == 60:
+            next_funding_minutes = 0
+            next_funding_hours += 1
+        
+        countdown = f"{next_funding_hours:02d}:{next_funding_minutes:02d}"
+        
+        # Calculate lifetime profit (example: 30 days)
+        lifetime_profit_pct = daily_profit_pct * 30
+        
+        list_html += f'''
+        <div class="table-row">
+            <div class="table-cell ticker-cell">
+                <div class="star-icon">⭐</div>
+                <div class="ticker-info">
+                    <div class="ticker-symbol">{symbol}USDT</div>
+                    <div class="position-type {position_color}">{position_type} {exchange.title()}</div>
+                </div>
+            </div>
+            
+            <div class="table-cell rates-cell">
+                <div class="funding-rate {rate_color}">{funding_rate*100:.3f}%</div>
+                <div class="rate-comparison">+{abs(funding_rate)*100:.3f}%</div>
+            </div>
+            
+            <div class="table-cell countdown-cell">
+                <div class="countdown-number">1</div>
+                <div class="countdown-time">{countdown}</div>
+            </div>
+            
+            <div class="table-cell profit-cell">
+                <div class="profit-pct {profit_color}">{daily_profit_pct:+.3f}%</div>
+            </div>
+            
+            <div class="table-cell profit-cell">
+                <div class="profit-pct {profit_color}">{daily_profit_pct:+.3f}%</div>
+            </div>
+            
+            <div class="table-cell lifetime-cell">
+                <div class="lifetime-value">{abs(lifetime_profit_pct):.1f}%</div>
+                <div class="lifetime-time">Real-time</div>
+            </div>
+        </div>
+        '''
+    
+    list_html += '</div>'
+    return list_html
+
+def create_arbitrage_chart(arb_df):
+    """Create arbitrage opportunities chart with dark theme"""
+    if arb_df.empty:
+        return None
+    
+    # Sort by profit potential and take top 10
+    arb_df = arb_df.sort_values('potential_daily_profit_100', ascending=True).tail(10)
+    
+    fig = go.Figure()
+    
+    # Color scheme based on profit potential
+    colors = []
+    for profit in arb_df['potential_daily_profit_100']:
+        if profit > 0.05:
+            colors.append('#2ed573')  # Green for high profit
+        elif profit > 0.03:
+            colors.append('#ffa502')  # Orange for medium profit
+        elif profit > 0.01:
+            colors.append('#3742fa')  # Blue for low profit
+        else:
+            colors.append('#747d8c')  # Gray for very low profit
+    
+    fig.add_trace(go.Bar(
+        x=arb_df['potential_daily_profit_100'],
+        y=[f"{row['exchange_1']} → {row['exchange_2']}" for _, row in arb_df.iterrows()],
+        orientation='h',
+        marker=dict(
+            color=colors,
+            line=dict(color='white', width=1)
+        ),
+        text=[f"${profit:.3f}" for profit in arb_df['potential_daily_profit_100']],
+        textposition='outside',
+        hovertemplate='<b>%{y}</b><br>' +
+                     'Daily Profit: $%{x:.3f}<br>' +
+                     'Monthly: $%{customdata:.2f}<br>' +
+                     '<extra></extra>',
+        customdata=arb_df['potential_monthly_profit_100']
+    ))
+    
+    fig.update_layout(
+        title={
+            'text': 'Top Arbitrage Opportunities',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 18, 'color': '#ffffff', 'family': 'Inter'}
+        },
+        xaxis_title='Daily Profit ($)',
+        yaxis_title='Exchange Pairs',
+        height=450,
+        showlegend=False,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#ffffff', family='Inter'),
+        xaxis=dict(
+            gridcolor='rgba(255,255,255,0.1)',
+            zeroline=False,
+            color='#ffffff',
+            title=dict(font=dict(color='#ffffff')),
+            tickfont=dict(color='#ffffff')
+        ),
+        yaxis=dict(
+            gridcolor='rgba(255,255,255,0.1)',
+            color='#ffffff',
+            title=dict(font=dict(color='#ffffff')),
+            tickfont=dict(color='#ffffff')
+        )
+    )
+    
+    return fig
+
+def create_current_rates_chart(data):
+    """Create current rates comparison chart with dark theme"""
+    if data.empty:
+        return None
+    
+    latest_rates = data.groupby('exchange')['funding_rate'].last().reset_index()
+    latest_rates = latest_rates.sort_values('funding_rate')
+    
+    fig = go.Figure()
+    
+    # Color scheme for rates: red for negative, green for positive, yellow for neutral
+    colors = []
+    for rate in latest_rates['funding_rate']:
+        if rate < 0:
+            colors.append('#ff6b6b')  # Red for negative
+        elif rate > 0.0001:
+            colors.append('#4ecdc4')  # Teal for high positive
+        elif rate > 0.00005:
+            colors.append('#00d4ff')  # Blue for medium positive
+        else:
+            colors.append('#feca57')  # Yellow for low positive
+    
+    fig.add_trace(go.Bar(
+        x=latest_rates['funding_rate'] * 100,
+        y=latest_rates['exchange'],
+        orientation='h',
+        marker=dict(
+            color=colors,
+            line=dict(color='white', width=1)
+        ),
+        text=[f"{rate:.4f}%" for rate in latest_rates['funding_rate'] * 100],
+        textposition='outside',
+        hovertemplate='<b>%{y}</b><br>' +
+                     'Rate: %{x:.4f}%<br>' +
+                     '<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title={
+            'text': 'Current Funding Rates by Exchange',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 18, 'color': '#ffffff', 'family': 'Inter'}
+        },
+        xaxis_title='Funding Rate (%)',
+        yaxis_title='Exchange',
+        height=400,
+        showlegend=False,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#ffffff', family='Inter'),
+        xaxis=dict(
+            gridcolor='rgba(255,255,255,0.1)',
+            zeroline=True,
+            zerolinecolor='rgba(255,255,255,0.3)',
+            color='#ffffff',
+            title=dict(font=dict(color='#ffffff')),
+            tickfont=dict(color='#ffffff')
+        ),
+        yaxis=dict(
+            gridcolor='rgba(255,255,255,0.1)',
+            color='#ffffff',
+            title=dict(font=dict(color='#ffffff')),
+            tickfont=dict(color='#ffffff')
+        )
+    )
+    
+    return fig
+
 def get_current_rates_for_crypto(symbol):
     """Get current funding rates for a specific crypto from all exchanges"""
     
@@ -1465,15 +1702,15 @@ def main():
         
         with col1_3:
             st.metric(
-                "Max Rate",
-                f"{stats['max_rate']*100:.4f}%",
+                "Rate Spread",
+                f"{stats['spread']*100:.4f}%",
                 delta=None
             )
         
         with col1_4:
             st.metric(
-                "Rate Spread",
-                f"{stats['spread']*100:.4f}%",
+                "Arbitrage Opportunities",
+                len(arb_df),
                 delta=None
             )
         
@@ -1482,88 +1719,97 @@ def main():
         
         with card_col1:
             if not arb_df.empty:
-                best_opp = arb_df.iloc[0]
-                st.markdown(f'''
+                # Best opportunity card - using original logic for min/max rates
+                best_opportunity = arb_df.loc[arb_df['potential_daily_profit_100'].idxmax()]
+                
+                st.markdown(f"""
                 <div class="opportunity-card">
                     <h3>Best Opportunity</h3>
-                    <p><strong>{best_opp['exchange_1'].upper()} → {best_opp['exchange_2'].upper()}</strong></p>
-                    <p>Daily Profit: <span style="color: #00ff88; font-weight: 700;">${best_opp['potential_daily_profit_100']:.2f}</span></p>
-                    <p>Monthly: <span style="color: #00ff88; font-weight: 700;">${best_opp['potential_monthly_profit_100']:.2f}</span></p>
-                    <p>Strategy: {best_opp['direction']}</p>
+                    <p><strong>{best_opportunity['exchange_1'].upper()} → {best_opportunity['exchange_2'].upper()}</strong></p>
+                    <p>Daily Profit: <strong>${best_opportunity['potential_daily_profit_100']*(capital/100):.2f}</strong></p>
+                    <p>Monthly: <strong>${best_opportunity['potential_monthly_profit_100']*(capital/100):.2f}</strong></p>
+                    <p>Strategy: {best_opportunity['direction']}</p>
                 </div>
-                ''', unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
             else:
-                st.markdown('''
+                st.markdown("""
                 <div class="opportunity-card">
                     <h3>Best Opportunity</h3>
-                    <p>No significant opportunities found</p>
-                    <p>Daily Profit: <span style="color: #feca57; font-weight: 700;">$0.00</span></p>
-                    <p>Strategy: Wait for better rates</p>
+                    <p>No opportunities found</p>
                 </div>
-                ''', unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
         
         with card_col2:
-            total_opportunities = len(arb_df)
-            avg_daily_profit = arb_df['potential_daily_profit_100'].mean() if not arb_df.empty else 0
-            total_pairs = len(arb_df) if not arb_df.empty else 0
-            
-            st.markdown(f'''
-            <div class="summary-card">
-                <h3>Summary</h3>
-                <p>Total Daily Potential: <span style="color: #00ff88; font-weight: 700;">${avg_daily_profit:.2f}</span></p>
-                <p>Average per Pair: <span style="color: #00ff88; font-weight: 700;">${avg_daily_profit:.2f}</span></p>
-                <p>Active Pairs: <span style="color: #ffffff; font-weight: 700;">{total_pairs}</span></p>
-            </div>
-            ''', unsafe_allow_html=True)
-
-        # Charts
-        st.markdown("<h3>Historical Analysis</h3>", unsafe_allow_html=True)
-        
-        col_chart1, col_chart2 = st.columns(2)
-        
-        with col_chart1:
-            funding_chart = create_funding_rate_chart(data)
-            if funding_chart:
-                st.plotly_chart(funding_chart, use_container_width=True)
-        
-        with col_chart2:
-            # Current rates comparison
-            if not data.empty:
-                latest_rates = data.groupby('exchange')['funding_rate'].last().reset_index()
-                latest_rates = latest_rates.sort_values('funding_rate')
+            if not arb_df.empty:
+                total_daily_profit = arb_df['potential_daily_profit_100'].sum() * (capital/100)
+                avg_daily_profit = arb_df['potential_daily_profit_100'].mean() * (capital/100)
                 
-                # Simple bar chart for current rates
-                st.subheader("Current Rates by Exchange")
-                for _, row in latest_rates.iterrows():
-                    rate_color = "#00ff88" if row['funding_rate'] > 0 else "#ff4757"
-                    st.markdown(f'''
-                    <div style="
-                        background: rgba(255, 255, 255, 0.05);
-                        border-radius: 8px;
-                        padding: 0.8rem;
-                        margin: 0.3rem 0;
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    ">
-                        <div style="color: #ffffff; font-weight: 600;">{row['exchange'].title()}</div>
-                        <div style="color: {rate_color}; font-weight: 700; font-family: monospace;">{row['funding_rate']*100:.4f}%</div>
-                    </div>
-                    ''', unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="summary-card">
+                    <h3>Summary</h3>
+                    <p>Total Daily Potential: <strong>${total_daily_profit:.2f}</strong></p>
+                    <p>Average per Pair: <strong>${avg_daily_profit:.2f}</strong></p>
+                    <p>Active Pairs: <strong>{len(arb_df)}</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="summary-card">
+                    <h3>Summary</h3>
+                    <p>No data available</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Charts
+        st.subheader("Historical Funding Rates")
+        hist_chart = create_funding_rate_chart(data)
+        if hist_chart:
+            st.plotly_chart(hist_chart, use_container_width=True)
+        
+        st.subheader("Current Rates Comparison")
+        rates_chart = create_current_rates_chart(data)
+        if rates_chart:
+            st.plotly_chart(rates_chart, use_container_width=True)
     
     with col2:
-        # Multi-cryptocurrency tracker
-        st.markdown('<div class="tracker-container">', unsafe_allow_html=True)
-        st.markdown('<div class="tracker-header"><div class="tracker-title">Live Opportunities Tracker</div></div>', unsafe_allow_html=True)
+        # Opportunities tracker
+        st.markdown('<div style="margin-top: 2rem;"></div>', unsafe_allow_html=True)
         
         # Get opportunities for all cryptos
-        opportunities = get_best_opportunities_for_all_cryptos(capital)
+        with st.spinner("Fetching real-time funding rates..."):
+            opportunities = get_best_opportunities_for_all_cryptos(capital)
         
-        # Render opportunities tracker
-        render_opportunities_tracker(opportunities)
+        # Add some summary stats at the top
+        if opportunities:
+            total_opportunities = len(opportunities)
+            avg_profit = sum(opp['profit_percentage'] for opp in opportunities) / len(opportunities)
+            best_profit = max(opp['profit_percentage'] for opp in opportunities)
+            
+            st.markdown(f'''
+            <div style="
+                background: linear-gradient(135deg, #4a5dd7 0%, #5c4a99 100%);
+                border-radius: 8px;
+                padding: 1rem;
+                margin-bottom: 1rem;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                text-align: center;
+                box-shadow: 0 6px 30px rgba(74, 93, 215, 0.5);
+            ">
+                <div style="color: #ffffff; font-size: 0.9rem; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">
+                    <strong>{total_opportunities}</strong> opportunities found | 
+                    Avg: <strong>{avg_profit:.3f}%</strong> | 
+                    Best: <strong style="color: #00ff88;">{best_profit:.3f}%</strong>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Render tracker
+        render_opportunities_tracker(opportunities, 'desc')
+    
+    # Auto-refresh functionality
+    if auto_refresh:
+        time.sleep(300)  # 5 minutes
+        st.rerun()
 
 if __name__ == "__main__":
     main()
