@@ -2,6 +2,8 @@
 
 Real-time dashboard for monitoring funding rate arbitrage opportunities across 9 major cryptocurrency exchanges.
 
+Access via Streamlit: https://fundingratearb-dashboard.streamlit.app/
+
 ## Features
 
 - **Real-time Data**: Live funding rates from 9 major exchanges (Binance, Bybit, OKX, Gate.io, KuCoin, MEXC, Bitget, BingX, WhiteBit)
@@ -46,7 +48,7 @@ Real-time dashboard for monitoring funding rate arbitrage opportunities across 9
 
 ## Usage
 
-Run the dashboard locally:
+To run the dashboard locally:
 ```bash
 streamlit run funding_rate_dashboard.py
 ```
